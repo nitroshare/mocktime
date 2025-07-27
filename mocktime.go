@@ -1,6 +1,7 @@
 package mocktime
 
 import (
+	"sync"
 	"time"
 )
 
@@ -10,6 +11,7 @@ type afterChanData struct {
 }
 
 var (
+	mutex     sync.RWMutex
 	mockTime  time.Time
 	afterChan []*afterChanData
 )
@@ -17,10 +19,14 @@ var (
 // MockNow returns the current mocked time. Although this can be set by
 // reassigning Now, this is typically handled automatically by Mock.
 func MockNow() time.Time {
+	mutex.RLock()
+	defer mutex.RUnlock()
 	return mockTime
 }
 
 func MockAfter(d time.Duration) <-chan time.Time {
+	mutex.Lock()
+	mutex.Unlock()
 	ch := make(chan time.Time)
 	afterChan = append(afterChan, &afterChanData{
 		expiry: mockTime.Add(d),
@@ -29,9 +35,15 @@ func MockAfter(d time.Duration) <-chan time.Time {
 	return ch
 }
 
-// Set explicitly sets the mocked time.
-func Set(t time.Time) {
-	mockTime = t
+func setAdvance(t *time.Time, d *time.Duration) {
+	mutex.Lock()
+	mutex.Unlock()
+	if t != nil {
+		mockTime = *t
+	}
+	if d != nil {
+		mockTime = mockTime.Add(*d)
+	}
 	expInd := 0
 	for i, v := range afterChan {
 		if v.expiry.After(mockTime) {
@@ -45,9 +57,14 @@ func Set(t time.Time) {
 	afterChan = afterChan[expInd:]
 }
 
+// Set explicitly sets the mocked time.
+func Set(t time.Time) {
+	setAdvance(&t, nil)
+}
+
 // Advance advances the mocked time by the specified duration.
 func Advance(d time.Duration) {
-	Set(mockTime.Add(d))
+	setAdvance(nil, &d)
 }
 
 var (
