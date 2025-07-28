@@ -3,6 +3,8 @@ package mocktime
 import (
 	"sync"
 	"time"
+
+	"github.com/nitroshare/golist"
 )
 
 type afterChanData struct {
@@ -13,7 +15,7 @@ type afterChanData struct {
 var (
 	mutex     sync.RWMutex
 	mockTime  time.Time
-	afterChan []*afterChanData
+	afterChan = golist.List[*afterChanData]{}
 	firedFn   func(<-chan time.Time)
 )
 
@@ -29,7 +31,7 @@ func MockAfter(d time.Duration) <-chan time.Time {
 	mutex.Lock()
 	mutex.Unlock()
 	ch := make(chan time.Time)
-	afterChan = append(afterChan, &afterChanData{
+	afterChan.Add(&afterChanData{
 		expiry: mockTime.Add(d),
 		ch:     ch,
 	})
@@ -45,20 +47,17 @@ func setAdvance(t *time.Time, d *time.Duration) {
 	if d != nil {
 		mockTime = mockTime.Add(*d)
 	}
-	expInd := 0
-	for i, v := range afterChan {
-		if v.expiry.After(mockTime) {
-			expInd = i
-			break
+	for e := afterChan.Front; e != nil; e = e.Next {
+		if !e.Value.expiry.After(mockTime) {
+			if firedFn != nil {
+				firedFn(e.Value.ch)
+			}
+			go func() {
+				e.Value.ch <- e.Value.expiry
+			}()
+			afterChan.Remove(e)
 		}
-		if firedFn != nil {
-			firedFn(v.ch)
-		}
-		go func() {
-			v.ch <- v.expiry
-		}()
 	}
-	afterChan = afterChan[expInd:]
 }
 
 // Set explicitly sets the mocked time.
