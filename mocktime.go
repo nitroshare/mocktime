@@ -7,13 +7,14 @@ import (
 
 type afterChanData struct {
 	expiry time.Time
-	ch     chan<- time.Time
+	ch     chan time.Time
 }
 
 var (
 	mutex     sync.RWMutex
 	mockTime  time.Time
 	afterChan []*afterChanData
+	firedFn   func(<-chan time.Time)
 )
 
 // MockNow returns the current mocked time. Although this can be set by
@@ -49,6 +50,9 @@ func setAdvance(t *time.Time, d *time.Duration) {
 		if v.expiry.After(mockTime) {
 			expInd = i
 			break
+		}
+		if firedFn != nil {
+			firedFn(v.ch)
 		}
 		go func() {
 			v.ch <- v.expiry
