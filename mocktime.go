@@ -52,8 +52,9 @@ func setAdvance(t *time.Time, d *time.Duration) {
 			if firedFn != nil {
 				firedFn(e.Value.ch)
 			}
+			capturedV := e.Value
 			go func() {
-				e.Value.ch <- e.Value.expiry
+				capturedV.ch <- capturedV.expiry
 			}()
 			afterChan.Remove(e)
 		}
