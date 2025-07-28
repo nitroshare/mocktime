@@ -3,20 +3,9 @@ package mocktime
 import (
 	"testing"
 	"time"
-)
 
-func compare[T comparable](t *testing.T, v1, v2 T, same bool) {
-	t.Helper()
-	if same {
-		if v1 != v2 {
-			t.Fatalf("%v != %v", v1, v2)
-		}
-	} else {
-		if v1 == v2 {
-			t.Fatalf("%v == %v", v1, v2)
-		}
-	}
-}
+	"github.com/nitroshare/compare"
+)
 
 var (
 	fireMap = map[<-chan time.Time]bool{}
@@ -40,11 +29,11 @@ func assertFired(t *testing.T, ch <-chan time.Time, shouldSucceed bool) {
 }
 
 func TestMockUnmock(t *testing.T) {
-	compare(t, Now(), time.Time{}, false)
+	compare.Compare(t, Now(), time.Time{}, false)
 	Mock()
-	compare(t, Now(), time.Time{}, true)
+	compare.Compare(t, Now(), time.Time{}, true)
 	Unmock()
-	compare(t, Now(), time.Time{}, false)
+	compare.Compare(t, Now(), time.Time{}, false)
 }
 
 func TestSetAdvance(t *testing.T) {
@@ -52,10 +41,10 @@ func TestSetAdvance(t *testing.T) {
 	defer Unmock()
 	v := time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 	Set(v)
-	compare(t, Now(), v, true)
+	compare.Compare(t, Now(), v, true)
 	d := 24 * time.Hour
 	Advance(d)
-	compare(t, Now(), v.Add(d), true)
+	compare.Compare(t, Now(), v.Add(d), true)
 }
 
 func TestAfter(t *testing.T) {
