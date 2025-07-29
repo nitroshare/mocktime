@@ -31,7 +31,7 @@ mocktime.Set(time.Date(2025, time.May, 1, 0, 0, 0, 0, time.UTC))
 <-mocktime.After(5 * time.Second)
 ```
 
-### AdvanceToAfter
+### Advanced Usage
 
 A special utility function is provided that blocks until the next call to `After()`:
 
@@ -49,7 +49,7 @@ go func() {
 // Advance the time to the expiry of the After() call above; we don't need to
 // worry if the goroutine has reached the After() call or not when this
 // function is called as it will block until After() is called
-AdvanceToAfter()
+mocktime.AdvanceToAfter()
 
 // This read is guaranteed to succeed because the read on After() in the
 // goroutine is unblocked
