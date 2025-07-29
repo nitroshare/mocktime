@@ -26,15 +26,32 @@ mocktime.Advance(5 * time.Second)
 // ...or explicitly set
 mocktime.Set(time.Date(2025, time.May, 1, 0, 0, 0, 0, time.UTC))
 
-// Works with After() as well - this example will attempt to wait for five
-// seconds but will only wait one second since the mocked time is advanced ten
-// seconds in the goroutine, triggering the channel send.
-go func() {
-    time.Sleep(1 * time.Second)
-    fmt.Println("Advancing mocked time by 10 seconds")
-    time.Advance(10 * time.Second)
-}()
-fmt.Println("Waiting 5 mocked seconds...")
+// Calls to After() will block until the time is advanced (in another
+// goroutine, for example)
 <-mocktime.After(5 * time.Second)
-fmt.Println("...time elapsed!")
+```
+
+### AdvanceToAfter
+
+A special utility function is provided that blocks until the next call to `After()`:
+
+```golang
+chanDone := make(chan any)
+
+go func() {
+
+    // Normally, this will block until Set() or Advance() is called
+    <-mocktime.After(5 * time.Second)
+
+    close(chanDone)
+}()
+
+// Advance the time to the expiry of the After() call above; we don't need to
+// worry if the goroutine has reached the After() call or not when this
+// function is called as it will block until After() is called
+AdvanceToAfter()
+
+// This read is guaranteed to succeed because the read on After() in the
+// goroutine is unblocked
+<-chanDone
 ```

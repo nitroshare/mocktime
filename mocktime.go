@@ -1,89 +1,53 @@
 package mocktime
 
 import (
-	"sync"
 	"time"
-
-	"github.com/nitroshare/golist"
 )
 
-type afterChanData struct {
-	expiry time.Time
-	ch     chan time.Time
-}
-
 var (
-	mutex     sync.RWMutex
-	mockTime  time.Time
-	afterChan = golist.List[*afterChanData]{}
-	firedFn   func(<-chan time.Time)
+	loop *mockLoop
 )
 
 // MockNow returns the current mocked time. Although this can be set by
 // reassigning Now, this is typically handled automatically by Mock.
 func MockNow() time.Time {
-	mutex.RLock()
-	defer mutex.RUnlock()
-	return mockTime
+	loop.chanNow <- nil
+	return <-loop.chanTime
 }
 
+// MockAfter returns a channel that will send when the specified duration
+// elapses via calls to Set or Advance.
 func MockAfter(d time.Duration) <-chan time.Time {
-	mutex.Lock()
-	defer mutex.Unlock()
-	ch := make(chan time.Time)
-	afterChan.Add(&afterChanData{
-		expiry: mockTime.Add(d),
-		ch:     ch,
-	})
-	return ch
-}
-
-func setAdvance(t *time.Time, d *time.Duration) {
-	mutex.Lock()
-	defer mutex.Unlock()
-	if t != nil {
-		mockTime = *t
-	}
-	if d != nil {
-		mockTime = mockTime.Add(*d)
-	}
-	for e := afterChan.Front; e != nil; e = e.Next {
-		if !e.Value.expiry.After(mockTime) {
-			if firedFn != nil {
-				firedFn(e.Value.ch)
-			}
-			capturedV := e.Value
-			go func() {
-				capturedV.ch <- capturedV.expiry
-			}()
-			afterChan.Remove(e)
-		}
-	}
+	loop.chanAfter <- d
+	return <-loop.chanTimeChan
 }
 
 // Set explicitly sets the mocked time.
 func Set(t time.Time) {
-	setAdvance(&t, nil)
+	loop.chanSet <- t
+	<-loop.chanAny
 }
 
 // Advance advances the mocked time by the specified duration.
 func Advance(d time.Duration) {
-	setAdvance(nil, &d)
+	loop.chanAdvance <- d
+	<-loop.chanAny
+}
+
+// AdvanceToAfter is a synchronization function that will advance to the time
+// of the next After() call, waiting for a call to After() if necessary.
+func AdvanceToAfter() {
+	loop.chanAdvanceToAfter <- nil
+	<-loop.chanAny
 }
 
 var (
-
 	// Now normally points to time.Now but can also be pointed to with MockNow.
 	Now func() time.Time
 
 	// After normally points to time.After but can also be pointed to with MockAfter.
 	After func(d time.Duration) <-chan time.Time
 )
-
-func set() {
-	Now = MockNow
-	After = MockAfter
-}
 
 func reset() {
 	Now = time.Now
@@ -96,10 +60,13 @@ func init() {
 
 // Mock replaces the time functions in this package with their mocked equivalents.
 func Mock() {
-	set()
+	loop = newMockLoop()
+	Now = MockNow
+	After = MockAfter
 }
 
 // Unmock replaces the mocked time functions with their original equivalents.
 func Unmock() {
+	loop.close()
 	reset()
 }
