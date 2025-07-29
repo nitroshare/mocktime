@@ -29,7 +29,7 @@ func MockNow() time.Time {
 
 func MockAfter(d time.Duration) <-chan time.Time {
 	mutex.Lock()
-	mutex.Unlock()
+	defer mutex.Unlock()
 	ch := make(chan time.Time)
 	afterChan.Add(&afterChanData{
 		expiry: mockTime.Add(d),
@@ -40,7 +40,7 @@ func MockAfter(d time.Duration) <-chan time.Time {
 
 func setAdvance(t *time.Time, d *time.Duration) {
 	mutex.Lock()
-	mutex.Unlock()
+	defer mutex.Unlock()
 	if t != nil {
 		mockTime = *t
 	}
