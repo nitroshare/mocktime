@@ -18,6 +18,9 @@ func MockNow() time.Time {
 // MockAfter returns a channel that will send when the specified duration
 // elapses via calls to Set or Advance.
 func MockAfter(d time.Duration) <-chan time.Time {
+	if loop.chanTest != nil {
+		<-loop.chanTest
+	}
 	loop.chanAfter <- d
 	return <-loop.chanTimeChan
 }

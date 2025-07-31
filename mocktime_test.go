@@ -34,6 +34,11 @@ func TestAfter(t *testing.T) {
 		d          = 1 * time.Second
 		chanClosed = make(chan any)
 	)
+
+	// Set this to non-nil to force the execution order of AdvanceToAfter and
+	// the call to After in the secondary goroutine
+	loop.chanTest = make(chan any)
+
 	go func() {
 		defer close(chanClosed)
 		<-After(d)

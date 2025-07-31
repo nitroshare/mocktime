@@ -22,6 +22,7 @@ type mockLoop struct {
 	chanAny            chan any
 	chanTime           chan time.Time
 	chanTimeChan       chan (<-chan time.Time)
+	chanTest           chan any
 	chanClose          chan any
 }
 
@@ -85,6 +86,9 @@ func (m *mockLoop) run() {
 		case <-m.chanAdvanceToAfter:
 			earliestTime := m.findEarliest()
 			if earliestTime.IsZero() {
+				if m.chanTest != nil {
+					m.chanTest <- nil
+				}
 				waitingForAfter = true
 				continue
 			}
