@@ -20,7 +20,7 @@ func (t *Timer) Stop() bool {
 }
 
 // NewTimer creates a new Timer that will send on the channel C when the
-// specified duration expires. When mocked,
+// specified duration expires.
 func NewTimer(d time.Duration) *Timer {
 	if loop == nil {
 		timer := time.NewTimer(d)
