@@ -6,8 +6,10 @@ import (
 
 // Timer provides a drop-in replacement for time.Timer.
 type Timer struct {
-	C     <-chan time.Time
-	timer *time.Timer
+	C        <-chan time.Time
+	timer    *time.Timer
+	ticker   bool
+	duration time.Duration
 }
 
 // Stop ends the timer.
@@ -29,11 +31,10 @@ func NewTimer(d time.Duration) *Timer {
 			timer: timer,
 		}
 	}
-	t := &Timer{}
-	loop.chanNewTimer <- &newTimerParams{
+	t := &Timer{
 		duration: d,
-		timer:    t,
 	}
+	loop.chanNewTimer <- t
 	t.C = <-loop.chanTimeChan
 	return t
 }

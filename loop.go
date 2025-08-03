@@ -12,9 +12,9 @@ type afterChanData struct {
 	timer  *Timer
 }
 
-type newTimerParams struct {
-	duration time.Duration
+type resetTimerParams struct {
 	timer    *Timer
+	duration time.Duration
 }
 
 type mockLoop struct {
@@ -26,8 +26,9 @@ type mockLoop struct {
 	chanSet            chan time.Time
 	chanAdvance        chan time.Duration
 	chanAdvanceToAfter chan any
-	chanNewTimer       chan *newTimerParams
+	chanNewTimer       chan *Timer
 	chanStopTimer      chan *Timer
+	chanResetTimer     chan *resetTimerParams
 	chanAny            chan any
 	chanBool           chan bool
 	chanTime           chan time.Time
@@ -64,9 +65,14 @@ func (m *mockLoop) after(d time.Duration, t *Timer) <-chan time.Time {
 
 func (m *mockLoop) sendElapsed() {
 	for e := m.afterChan.Front; e != nil; e = e.Next {
-		if !e.Value.expiry.After(m.mockTime) {
-			m.send(e.Value.expiry, e.Value.ch)
-			m.afterChan.Remove(e)
+		d := e.Value
+		if !d.expiry.After(m.mockTime) {
+			m.send(d.expiry, d.ch)
+			if d.timer != nil && d.timer.ticker {
+				d.expiry = d.expiry.Add(d.timer.duration)
+			} else {
+				m.afterChan.Remove(e)
+			}
 		}
 	}
 }
@@ -89,6 +95,16 @@ func (m *mockLoop) stopTimer(t *Timer) bool {
 		}
 	}
 	return false
+}
+
+func (m *mockLoop) resetTimer(t *Timer, d time.Duration) {
+	for e := m.afterChan.Front; e != nil; e = e.Next {
+		if t == e.Value.timer {
+			e.Value.expiry = m.mockTime.Add(d)
+			t.duration = d
+			break
+		}
+	}
 }
 
 func (m *mockLoop) run() {
@@ -119,10 +135,13 @@ func (m *mockLoop) run() {
 			m.mockTime = earliestTime
 			m.sendElapsed()
 			m.chanAny <- nil
-		case p := <-m.chanNewTimer:
-			m.chanTimeChan <- m.after(p.duration, p.timer)
+		case t := <-m.chanNewTimer:
+			m.chanTimeChan <- m.after(t.duration, t)
 		case t := <-m.chanStopTimer:
 			m.chanBool <- m.stopTimer(t)
+		case d := <-m.chanResetTimer:
+			m.resetTimer(d.timer, d.duration)
+			m.chanAny <- nil
 		case <-m.chanClose:
 			return
 		}
@@ -137,8 +156,9 @@ func newMockLoop() *mockLoop {
 		chanSet:            make(chan time.Time),
 		chanAdvance:        make(chan time.Duration),
 		chanAdvanceToAfter: make(chan any),
-		chanNewTimer:       make(chan *newTimerParams),
+		chanNewTimer:       make(chan *Timer),
 		chanStopTimer:      make(chan *Timer),
+		chanResetTimer:     make(chan *resetTimerParams),
 		chanAny:            make(chan any),
 		chanBool:           make(chan bool),
 		chanTime:           make(chan time.Time),
