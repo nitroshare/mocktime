@@ -30,9 +30,15 @@ mocktime.Set(time.Date(2025, time.May, 1, 0, 0, 0, 0, time.UTC))
 // goroutine, for example)
 <-mocktime.After(5 * time.Second)
 
-// A drop-in replacement for time.Timer is provided as well:
+// A drop-in replacement for time.Timer is provided:
 t := mocktime.NewTimer(10 * time.Second)
 <-t.C
+t.Stop()
+
+// ...as well as time.Ticker:
+t := mocktime.NewTicker(1 * time.Second)
+<-t.C
+t.Reset(2 * time.Second)
 t.Stop()
 ```
 
