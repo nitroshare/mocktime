@@ -153,3 +153,5 @@ func (m *mockLoop) close() {
 	m.chanClose <- nil
 	<-m.chanClose
 }
+
+var loop *mockLoop
