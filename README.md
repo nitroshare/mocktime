@@ -29,6 +29,11 @@ mocktime.Set(time.Date(2025, time.May, 1, 0, 0, 0, 0, time.UTC))
 // Calls to After() will block until the time is advanced (in another
 // goroutine, for example)
 <-mocktime.After(5 * time.Second)
+
+// A drop-in replacement for time.Timer is provided as well:
+t := mocktime.NewTimer(10 * time.Second)
+<-t.C
+t.Stop()
 ```
 
 ### Advanced Usage
