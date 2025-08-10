@@ -8,9 +8,12 @@ import (
 )
 
 func TestMockUnmock(t *testing.T) {
-	compare.Compare(t, Now(), time.Time{}, false)
+	compare.CompareFn(t, Now, time.Now, true)
+	compare.CompareFn(t, After, time.After, true)
 	Mock()
-	compare.Compare(t, Now(), time.Time{}, true)
+	compare.CompareFn(t, Now, MockNow, true)
+	compare.CompareFn(t, After, MockAfter, true)
 	Unmock()
-	compare.Compare(t, Now(), time.Time{}, false)
+	compare.CompareFn(t, Now, time.Now, true)
+	compare.CompareFn(t, After, time.After, true)
 }
